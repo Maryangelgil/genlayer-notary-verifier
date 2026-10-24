@@ -1,39 +1,39 @@
+# v0.2.16
+# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
+
+# Always put above lines as first in the contract file
 from genlayer import *
 
-@ic
-class NotaryVerifier:
-    # Estado del contrato
-    documents: LegacyMap[str, Address]
-    metadata: LegacyMap[str, str]
-    
-    def __init__(self):
-        # Inicializa las estructuras de almacenamiento
-        self.documents = LegacyMap(str, Address)
-        self.metadata = LegacyMap(str, str)
+class NotaryVerifier(gl.Contract):
+    # Declaración de campos de estado persistentes compatibles con el motor
+    documents_keys: str
+    documents_vals: str
 
-    @public
+    def __init__(self):
+        # Inicialización de diccionarios internos en memoria del contrato
+        self.documents = {}
+        self.metadata = {}
+
+    @gl.public.write
     def register_document(self, doc_hash: str, doc_info: str) -> None:
-        """
-        Registra un documento asegurando que el remitente sea el propietario legítimo.
-        """
+        if not hasattr(self, 'documents'):
+            self.documents = {}
+        if not hasattr(self, 'metadata'):
+            self.metadata = {}
+
         if doc_hash in self.documents:
             raise Exception("El documento ya está registrado en el sistema.")
         
-        self.documents[doc_hash] = Env.msg_sender()
+        self.documents[doc_hash] = str(Env.msg_sender())
         self.metadata[doc_hash] = doc_info
 
-    @public
+    @gl.public.view
     def verify_document_authenticity(self, doc_hash: str, expected_owner: str) -> bool:
-        """
-        Utiliza lógica de equivalencia y consenso para verificar si el documento 
-        existe, pertenece al propietario esperado y cumple con los estándares.
-        """
+        if not hasattr(self, 'documents'):
+            self.documents = {}
+
         if doc_hash not in self.documents:
             return False
             
         current_owner = self.documents[doc_hash]
-        
-        # Validación mediante principio de equivalencia determinista / consenso de GenLayer
-        owner_matches = str(current_owner) == str(expected_owner)
-        
-        return owner_matches
+        return str(current_owner) == str(expected_owner)
